@@ -56,10 +56,11 @@ part_of_speech_entry.pack(pady=20)
 meaning_entry = tk.Entry(root)
 meaning_entry.pack(pady=20)
 
-record_button = tk.Button(root, text='记录', command=record_en_words)
+record_button = tk.Button(root, text='记录', command=lambda: (record_en_words(), reset_entry()))
 record_button.pack(pady=20)
 
 resetting_button = tk.Button(root, text='重置', command=reset_entry)
 resetting_button.pack(pady=20)
+
 
 root.mainloop()

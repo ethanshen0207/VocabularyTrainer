@@ -7,30 +7,91 @@ import os
 import sys
 
 
+been_fetch = False
+
+
 def fetch_random_word():
-    global current_word, current_word_key
+    global current_word, current_word_key, been_fetch
     word_keys = list(words_data.keys())
+
+    # 检查列表是否为空
+    if not word_keys:
+        messagebox.showerror('错误', '目标文件为空，试试VocabularyRecorder.py记录单词')
+        return 1
+
     current_word_key = random.choice(word_keys)
     current_word = words_data[current_word_key]
     meaning_label.config(text=current_word['meaning'])
     entry.delete(0, tk.END)
+    been_fetch = True
 
 
 def check_answer():
     global read_file
     user_input = entry.get()
 
-    if not user_input:
-        messagebox.showerror('错误', '请写下你的答案')
+    # 如果没有随机一个单词，提示并随机
+    if not been_fetch:
+        messagebox.showerror('错误', '请随机一个单词')
+        fetch_random_word()
+        return 1
 
-    elif user_input == current_word_key:
+    # 判断learned_words.json是否存在
+    # 不存在
+    if not os.path.exists('learned_words.json'):
+        with open('learned_words.json', 'w', encoding='utf-8') as f:
+            pass
+
+    # 存在
+    with open('learned_words.json', 'r', encoding='utf-8') as f2:
+        data = f2.read()
+        if data:
+            print(data)
+            data = json.loads(data)
+        # 没有{}
+        else:
+            with open('learned_words.json', 'w', encoding='utf-8') as f3:
+                f3.write('{}')
+                f3.close()
+            data = {}
+
+        # 检查current_word_key是否被记录
+        if current_word_key in data:
+            # 读取熟练度
+            proficiency = data[current_word_key]
+        else:
+            proficiency = 0
+
+    # 判断用户输入是否正确
+    if user_input == current_word_key:
         messagebox.showinfo('正确!', '好!')
-        # 创建一个新的JSON文件来记录已掌握的单词
-        with open("learned_words.json", 'w', encoding='utf-8') as f:
-            learned_words = {current_word_key: 1}
-            json.dump(learned_words, f, ensure_ascii=False, indent=4)
+        proficiency += 1
     else:
-        messagebox.showwarning('错误!', f"正确答案是'{current_word_key}'")
+        messagebox.showwarning('错误!', f'正确答案是：{current_word_key}')
+        proficiency -= 1
+
+    # 如果熟练度达到要求
+    if proficiency >= 10 and messagebox.askyesno(title='Title', message='Do you want to proceed?'):
+        # 删除词汇在readfile中的记录
+        with open(read_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            del data[current_word_key]
+
+        with open(read_file, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+
+        # 删除词汇在learned_words.json中的记录
+        with open('learned_words.json', 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            del data[current_word_key]
+
+        with open('learned_words.json', 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+
+    data[current_word_key] = proficiency
+    with open('learned_words.json', 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
     fetch_random_word()
 
 
@@ -71,11 +132,11 @@ with open('options.json', 'r', encoding='utf-8') as f:
         messagebox.showerror('提示', '必要文件options.json没有指向我们需要的文件，将帮你重建')
         read_file = file_path_setting('read_file_path')['read_file_path']
 
-    with open(read_file, 'r', encoding='utf-8') as f:
-        words_data = json.load(f)
+    with open(read_file, 'r', encoding='utf-8') as f2:
+        words_data = json.load(f2)
         for i in words_data:
             if not check_word_format(words_data[i]):
-                messagebox.showerror('错误',f'目标文件有没有符合要求的键值对{words_data[i]}')
+                messagebox.showerror('错误', f'目标文件有没有符合要求的键值对：{words_data[i]}，正在退出')
                 sys.exit()
 
 # 创建主窗口
